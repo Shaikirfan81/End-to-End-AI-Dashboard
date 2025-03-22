@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .chart-container { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Sales Performance Dashboard</h2>
+        <input type="file" id="fileInput" accept=".json">
+        <div id="creditHealthChart" class="chart-container"></div>
+        <div id="churnChart" class="chart-container"></div>
+        <div id="ageChurnChart" class="chart-container"></div>
+        <div id="balanceChart" class="chart-container"></div>
+        <div id="productActivityChart" class="chart-container"></div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    console.log("Uploaded Data:", data);
+                    generateDashboard(data);
+                } catch (error) {
+                    console.error("Error parsing JSON:", error);
+                    alert("Invalid JSON file. Please upload a properly formatted JSON.");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function generateDashboard(data) {
+            // 1. Credit Health Distribution (Pie Chart)
+            let creditHealthCounts = {};
+            data.forEach(item => {
+                creditHealthCounts[item.CreditHealth] = (creditHealthCounts[item.CreditHealth] || 0) + 1;
+            });
+            plotPieChart('creditHealthChart', 'Credit Health Distribution', creditHealthCounts);
+            
+            // 2. Customer Churn Analysis (Bar Chart)
+            let churnCounts = { Exited: 0, Active: 0 };
+            data.forEach(item => {
+                item.Exited ? churnCounts.Exited++ : churnCounts.Active++;
+            });
+            plotBarChart('churnChart', 'Customer Churn Analysis', churnCounts);
+            
+            // 3. Age Group vs Churn Rate (Bar Chart)
+            let ageGroups = { Youth: 0, Adult: 0, Senior: 0 };
+            data.forEach(item => {
+                if (item.AgeCategory === 'Youth') ageGroups.Youth++;
+                if (item.AgeCategory === 'Adult') ageGroups.Adult++;
+                if (item.AgeCategory === 'Senior') ageGroups.Senior++;
+            });
+            plotBarChart('ageChurnChart', 'Age Group vs Churn Rate', ageGroups);
+            
+            // 4. Average Balance by Credit Score (Scatter Plot)
+            let balanceData = data.map(item => ({ x: item.CreditScore, y: item.Balance }));
+            plotScatterChart('balanceChart', 'Balance vs Credit Score', balanceData, 'Credit Score', 'Balance');
+            
+            // 5. Products Used vs Customer Activity (Bubble Chart)
+            let productActivity = data.map(item => ({ x: item.NumOfProducts, y: item.IsActiveMember, size: item.Balance }));
+            plotBubbleChart('productActivityChart', 'Products Used vs Customer Activity', productActivity, 'Num of Products', 'Active Member');
+        }
+
+        function plotPieChart(divId, title, data) {
+            Plotly.newPlot(divId, [{ labels: Object.keys(data), values: Object.values(data), type: 'pie' }], { title });
+        }
+
+        function plotBarChart(divId, title, data) {
+            Plotly.newPlot(divId, [{ x: Object.keys(data), y: Object.values(data), type: 'bar' }], { title });
+        }
+
+        function plotScatterChart(divId, title, data, xLabel, yLabel) {
+            Plotly.newPlot(divId, [{ x: data.map(d => d.x), y: data.map(d => d.y), mode: 'markers', type: 'scatter' }], { title, xaxis: { title: xLabel }, yaxis: { title: yLabel } });
+        }
+
+        function plotBubbleChart(divId, title, data, xLabel, yLabel) {
+            Plotly.newPlot(divId, [{ x: data.map(d => d.x), y: data.map(d => d.y), mode: 'markers', marker: { size: data.map(d => d.size / 1000) } }], { title, xaxis: { title: xLabel }, yaxis: { title: yLabel } });
+        }
+    </script>
+</body>
+</html>
