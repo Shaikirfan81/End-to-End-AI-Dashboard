@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .chart-container { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Sales Performance Dashboard</h2>
+        <input type="file" id="fileInput" accept=".json">
+        <div id="charts">
+            <div id="creditHealthChart" class="chart-container"></div>
+            <div id="creditHealthScoreChart" class="chart-container"></div>
+            <div id="ageChurnChart" class="chart-container"></div>
+            <div id="genderSalaryChart" class="chart-container"></div>
+            <div id="ageTenureChart" class="chart-container"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    console.log("Uploaded Data:", data); // Debugging log
+                    generateDashboard(data);
+                } catch (error) {
+                    console.error("Error parsing JSON:", error);
+                    alert("Invalid JSON file. Please upload a properly formatted file.");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function generateDashboard(data) {
+            // Clear previous charts
+            ['creditHealthChart', 'creditHealthScoreChart', 'ageChurnChart', 'genderSalaryChart', 'ageTenureChart'].forEach(id => {
+                document.getElementById(id).innerHTML = "";
+            });
+
+            // 1. Credit Health Distribution (Pie Chart)
+            let creditHealthCounts = {};
+            data.forEach(item => {
+                creditHealthCounts[item.CreditHealth] = (creditHealthCounts[item.CreditHealth] || 0) + 1;
+            });
+            plotPieChart('creditHealthChart', 'Credit Health Distribution', creditHealthCounts);
+            
+            // 2. Credit Health based on Credit Score (Bar Chart)
+            let creditHealthScore = {};
+            data.forEach(item => {
+                if (!creditHealthScore[item.CreditHealth]) creditHealthScore[item.CreditHealth] = [];
+                creditHealthScore[item.CreditHealth].push(item.CreditScore);
+            });
+            plotBarChartWithValues('creditHealthScoreChart', 'Credit Health based on Credit Score', creditHealthScore);
+
+            // 3. Age Group vs Churn Rate (Bar Chart with Values)
+            let ageGroups = { Youth: 0, Adult: 0, Senior: 0 };
+            data.forEach(item => {
+                if (item.AgeCategory === 'Youth') ageGroups.Youth++;
+                if (item.AgeCategory === 'Adult') ageGroups.Adult++;
+                if (item.AgeCategory === 'Senior') ageGroups.Senior++;
+            });
+            plotBarChartWithValues('ageChurnChart', 'Age Group vs Churn Rate', ageGroups);
+
+            // 4. Gender vs Estimated Salary (Pie Chart)
+            let genderSalary = {};
+            data.forEach(item => {
+                genderSalary[item.Gender] = (genderSalary[item.Gender] || 0) + item.EstimatedSalary;
+            });
+            plotPieChart('genderSalaryChart', 'Gender vs Estimated Salary', genderSalary);
+
+            // 5. Age Category vs Tenure (Bar Chart)
+            let ageTenure = {};
+            data.forEach(item => {
+                ageTenure[item.AgeCategory] = (ageTenure[item.AgeCategory] || 0) + item.Tenure;
+            });
+            plotBarChartWithValues('ageTenureChart', 'Age Category vs Tenure', ageTenure);
+        }
+
+        function formatNumber(value) {
+            if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
+            if (value >= 1000) return (value / 1000).toFixed(1) + "K";
+            return value.toString();
+        }
+
+        function plotPieChart(containerId, title, data) {
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            Plotly.newPlot(containerId, [{ labels, values, type: 'pie' }], { title });
+        }
+
+        function plotBarChartWithValues(containerId, title, data) {
+            const labels = Object.keys(data);
+            const values = Object.values(data).map(arr => Array.isArray(arr) ? arr.reduce((a, b) => a + b, 0) : arr);
+            const formattedValues = values.map(formatNumber);
+
+            Plotly.newPlot(containerId, [{
+                x: labels, y: values, type: 'bar', text: formattedValues, textposition: 'auto'
+            }], { title });
+        }
+
+    </script>
+</body>
+</html>
